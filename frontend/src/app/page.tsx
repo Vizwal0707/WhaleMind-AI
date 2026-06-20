@@ -10,6 +10,7 @@ import AlphaTab from '@/components/AlphaTab';
 import SignalsTab from '@/components/SignalsTab';
 import BacktestTab from '@/components/BacktestTab';
 import AlertsTab from '@/components/AlertsTab';
+import PerformanceReportTab from '@/components/PerformanceReportTab';
 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -35,6 +36,7 @@ export default function HomePage() {
         {activeTab === 'signals' && <SignalsTab />}
         {activeTab === 'backtest' && <BacktestTab />}
         {activeTab === 'alerts' && <AlertsTab />}
+        {activeTab === 'report' && <PerformanceReportTab />}
       </div>
     </div>
   );

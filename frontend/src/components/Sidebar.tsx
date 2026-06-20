@@ -10,7 +10,8 @@ import {
   LineChart, 
   BarChart3, 
   BellRing, 
-  ShieldCheck 
+  ShieldCheck,
+  FileText
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -28,6 +29,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     { id: 'signals', name: 'Trading Signals', icon: LineChart },
     { id: 'backtest', name: 'Backtest Results', icon: BarChart3 },
     { id: 'alerts', name: 'Alert Center', icon: BellRing },
+    { id: 'report', name: 'Performance Report', icon: FileText },
   ];
 
   return (

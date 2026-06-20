@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { fetchFromAPI } from '../lib/api';
-import { Search, ChevronRight, X, ArrowUpRight, ArrowDownRight, Compass } from 'lucide-react';
+import { Search, ChevronRight, X, ArrowUpRight, ArrowDownRight, Compass, RotateCw, Plus } from 'lucide-react';
 
 export default function TrackerTab() {
   const [whales, setWhales] = useState<any[]>([]);
@@ -11,6 +11,14 @@ export default function TrackerTab() {
   const [selectedWhaleAddress, setSelectedWhaleAddress] = useState<string | null>(null);
   const [whaleDetail, setWhaleDetail] = useState<any>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  // Ingestion states
+  const [newAddress, setNewAddress] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+  const [ingesting, setIngesting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [message, setMessage] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
     async function loadWhales() {
@@ -27,6 +35,58 @@ export default function TrackerTab() {
     const detail = await fetchFromAPI(`/whales/${address}`);
     setWhaleDetail(detail);
     setDetailLoading(false);
+  };
+
+  const handleIngest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAddress.trim()) return;
+    setIngesting(true);
+    setMessage('');
+    setErrorMsg('');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/whales/ingest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: newAddress.trim(), label: newLabel.trim() || 'Ingested Whale' }),
+      });
+      const resData = await response.json();
+      if (!response.ok) throw new Error(resData.detail || 'Ingestion failed');
+      
+      setMessage('Wallet successfully ingested!');
+      setNewAddress('');
+      setNewLabel('');
+      
+      // Reload whales list
+      const updated = await fetchFromAPI('/whales');
+      setWhales(updated);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error ingesting wallet');
+    } finally {
+      setIngesting(false);
+    }
+  };
+
+  const handleSyncAll = async () => {
+    setSyncing(true);
+    setMessage('');
+    setErrorMsg('');
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'}/whales/sync-all`, {
+        method: 'POST',
+      });
+      const resData = await response.json();
+      if (!response.ok) throw new Error(resData.detail || 'Sync failed');
+      
+      setMessage('All wallets synchronized!');
+      
+      // Reload whales list
+      const updated = await fetchFromAPI('/whales');
+      setWhales(updated);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error syncing wallets');
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const filteredWhales = whales.filter(w => 
@@ -47,7 +107,95 @@ export default function TrackerTab() {
               Filter and analyze wallets holding massive amounts of assets and influencing on-chain liquidity.
             </p>
           </div>
+          
+          {/* Global sync button */}
+          <button 
+            onClick={handleSyncAll}
+            disabled={syncing}
+            className="btn btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <RotateCw size={14} className={syncing ? 'animate-spin' : ''} />
+            <span>{syncing ? 'Syncing...' : 'Sync Live Data'}</span>
+          </button>
         </div>
+
+        {/* Live Ingestion Form Panel */}
+        <form onSubmit={handleIngest} className="glass-panel" style={{
+          padding: '20px',
+          borderRadius: '12px',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '16px',
+          alignItems: 'flex-end',
+          textAlign: 'left'
+        }}>
+          <div style={{ flex: 2, minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)' }}>ADD WALLET TO TRACK</label>
+            <input 
+              type="text"
+              placeholder="Paste ETH wallet address (e.g. 0xD8dA6BF...)"
+              value={newAddress}
+              onChange={(e) => setNewAddress(e.target.value)}
+              required
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                backgroundColor: 'var(--bg-input)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#fff',
+                outline: 'none'
+              }}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: '150px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)' }}>LABEL / IDENTIFIER</label>
+            <input 
+              type="text"
+              placeholder="e.g. Genesis Whale"
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                backgroundColor: 'var(--bg-input)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                fontSize: '13px',
+                color: '#fff',
+                outline: 'none'
+              }}
+            />
+          </div>
+          <button 
+            type="submit"
+            disabled={ingesting}
+            className="btn btn-primary"
+            style={{ height: '40px', padding: '0 20px', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            {ingesting ? (
+              <div className="spinner" style={{ width: '14px', height: '14px' }} />
+            ) : (
+              <Plus size={16} />
+            )}
+            <span>{ingesting ? 'Ingesting...' : 'Track & Ingest'}</span>
+          </button>
+        </form>
+
+        {/* Message Banner */}
+        {message && (
+          <div style={{ padding: '10px 16px', backgroundColor: 'rgba(76,175,80,0.1)', border: '1px solid #4CAF50', borderRadius: '8px', color: '#4CAF50', fontSize: '13px', textAlign: 'left' }}>
+            {message}
+          </div>
+        )}
+        {errorMsg && (
+          <div style={{ padding: '10px 16px', backgroundColor: 'rgba(244,67,54,0.1)', border: '1px solid #F44336', borderRadius: '8px', color: '#F44336', fontSize: '13px', textAlign: 'left' }}>
+            {errorMsg}
+          </div>
+        )}
+
 
         {/* Filters and search box */}
         <div style={{
